@@ -4,10 +4,12 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.ObjectInputStream;
 import java.io.PrintWriter;
+import java.math.BigInteger;
 import java.net.Socket;
 import java.security.PublicKey;
 import javax.crypto.Cipher;
 import java.security.SecureRandom;
+import java.security.Signature;
 import java.util.Base64;
 
 public class Cliente{
@@ -43,7 +45,41 @@ public class Cliente{
             }else{
                 escritor.println("ERROR");
             }
+
+            int generatorNumber = Integer.parseInt(lector.readLine());
+            String prime = lector.readLine();
+            int generatorNumberX = Integer.parseInt(lector.readLine());
+
+            BigInteger primeNumber = new BigInteger(prime);
+
+            BigInteger comprobanteFirma = BigInteger.valueOf(generatorNumber)
+                .add(BigInteger.valueOf(generatorNumberX))
+                .add(primeNumber);
+
+            byte[] comprobante = comprobanteFirma.toByteArray();
+
+            byte[] decodedSign = Base64.getDecoder().decode(lector.readLine());
+
+            Signature firma = Signature.getInstance("SHA1withRSA");
+            firma.initVerify(publicKey);
+            firma.update(comprobante);
+
+            if (firma.verify(decodedSign)) {
+                escritor.println("OK");
+            } else {
+                escritor.println("ERROR");
+            }
+
+            int Y = (int) Math.random();
+
+            int generatorNumberXY= (int)Math.pow(generatorNumberX, Y);
+
+            escritor.println(Math.pow(generatorNumber, Y));
             
+
+
+
+
 		}
 		catch (Exception e) {
 			e.printStackTrace();
