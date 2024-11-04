@@ -57,7 +57,6 @@ public class ServidorDelegado extends Thread {
             byte[] decodedMessage = Base64.getDecoder().decode(receivedMessage);
             byte[] mensajeBytes = cipher.doFinal(decodedMessage);
             String mensajeDesencriptado = new String(mensajeBytes);
-            System.out.println("Mensaje recibido: " + mensajeDesencriptado);
             escritor.println(mensajeDesencriptado);
 
             if(lector.readLine().equals("OK")){
@@ -127,7 +126,7 @@ public class ServidorDelegado extends Thread {
 
             int Y= Integer.parseInt(lector.readLine());
 
-            int generatorNumberXY= (int)Math.pow(generatorNumberX, Y);
+            int generatorNumberXY= (int)Math.pow(Y, x);
 
             BigInteger masterkey = BigInteger.valueOf(generatorNumberXY).mod(primeNumber);
 
@@ -135,13 +134,14 @@ public class ServidorDelegado extends Thread {
             byte[] ivBytes = new byte[16];
             random.nextBytes(ivBytes);
 
-            escritor.println(ivBytes);
+            escritor.println(Base64.getEncoder().encodeToString(ivBytes));
 
             IvParameterSpec iv = new IvParameterSpec(ivBytes);
 
             MessageDigest sha512 = MessageDigest.getInstance("SHA-512");
 
             byte[] hash = sha512.digest(masterkey.toByteArray());
+            System.out.println("Hash: " + hash);
 
             byte[] key1 = new byte[32];
             byte[] key2 = new byte[32];
@@ -151,13 +151,18 @@ public class ServidorDelegado extends Thread {
 
             SecretKey K_AB1 = new SecretKeySpec(key1, "AES");
             SecretKey K_AB2 = new SecretKeySpec(key2, "HmacSHA256");
+            System.out.println("Llaves asimétricas generadas exitosamente.");
 
-            int uid = Integer.parseInt(lector.readLine());
+            String uid = lector.readLine();
             String hmac_uid = lector.readLine();
 
+            byte[] uidDecoded64 = Base64.getDecoder().decode(uid);
+            Cipher cipherSimetricaUID = Cipher.getInstance("AES/CBC/PKCS5Padding");
+            cipherSimetricaUID.init(Cipher.DECRYPT_MODE, K_AB1, iv);
+            byte[] UIDDecoded=cipherSimetricaUID.doFinal(uidDecoded64);
             Mac mac = Mac.getInstance("HmacSHA256");
             mac.init(K_AB2);
-            byte[] computedHmacUid = mac.doFinal(Integer.toString(uid).getBytes());
+            byte[] computedHmacUid = mac.doFinal(UIDDecoded);
             String computedHmacUidBase64 = Base64.getEncoder().encodeToString(computedHmacUid);
 
             if (!computedHmacUidBase64.equals(hmac_uid)) {
@@ -168,9 +173,12 @@ public class ServidorDelegado extends Thread {
             String paquete_id = lector.readLine();
             String hmac_paquete = lector.readLine();
 
-            int paqueteIdDecoded = Integer.parseInt(new String(Base64.getDecoder().decode(paquete_id)));
+            byte[] paqueteIdDecoded64 = Base64.getDecoder().decode(paquete_id);
+            Cipher cipherSimetrica = Cipher.getInstance("AES/CBC/PKCS5Padding");
+            cipherSimetrica.init(Cipher.DECRYPT_MODE, K_AB1, iv);
+            byte[] paqueteIdDecoded=cipherSimetrica.doFinal(paqueteIdDecoded64);
             mac.init(K_AB2);
-            byte[] computedHmacPaquete = mac.doFinal(Integer.toString(paqueteIdDecoded).getBytes());
+            byte[] computedHmacPaquete = mac.doFinal(paqueteIdDecoded);
             String computedHmacPaqueteBase64 = Base64.getEncoder().encodeToString(computedHmacPaquete);
 
             if (!computedHmacPaqueteBase64.equals(hmac_paquete)) {
@@ -180,16 +188,26 @@ public class ServidorDelegado extends Thread {
 
             System.out.println("hmacs validas");
 
+            Estados estadoRespuesta = paquetes.get(Integer.parseInt(new String(paqueteIdDecoded)));
 
+            System.out.println("Estado del paquete: " + estadoRespuesta);
 
+            cipherSimetrica.init(Cipher.ENCRYPT_MODE, K_AB1, iv);
+            String estadoRespuestaCifrado = Base64.getEncoder().encodeToString(cipherSimetrica.doFinal(estadoRespuesta.toString().getBytes()));
+            mac.init(K_AB2);
+            byte[] hmacEstadoRespuesta = mac.doFinal(estadoRespuesta.toString().getBytes());
+            String hmacEstadoRespuestaBase64 = Base64.getEncoder().encodeToString(hmacEstadoRespuesta);
 
+            escritor.println(estadoRespuestaCifrado);
+            escritor.println(hmacEstadoRespuestaBase64);
 
-
+            if (lector.readLine().equals("TERMINAR")){
+                System.out.println("Conexión terminada");
+            }
 
             reader.close();
             process.waitFor();
-
-            // Enviar respuesta
+            process.destroy();
             socket.close();
             ois.close();
             ois2.close();

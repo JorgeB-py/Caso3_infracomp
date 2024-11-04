@@ -97,7 +97,11 @@ public class Cliente{
 
             escritor.println((int)Math.pow(generatorNumber, Y));
 
-            byte[] iv = lector.readLine().getBytes();
+            String ivBase64 = lector.readLine();
+
+            byte[] ivBytes = Base64.getDecoder().decode(ivBase64);
+
+            IvParameterSpec iv = new IvParameterSpec(ivBytes);
 
             MessageDigest sha512 = MessageDigest.getInstance("SHA-512");
 
@@ -111,13 +115,15 @@ public class Cliente{
             Random random = new Random();
 
             // Seleccionar un índice aleatorio
-            int randomIndex = random.nextInt(idCliente.size()+4);
+            int randomIndex = random.nextInt(idCliente.size());
 
             SecretKey K_AB1 = new SecretKeySpec(key1, "AES");
             SecretKey K_AB2 = new SecretKeySpec(key2, "HmacSHA256");
 
+            System.out.println("Llaves asimétricas generadas exitosamente.");
+
             Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
-            cipher.init(Cipher.ENCRYPT_MODE, K_AB1, new IvParameterSpec(iv));
+            cipher.init(Cipher.ENCRYPT_MODE, K_AB1, iv);
             String uid = Base64.getEncoder().encodeToString(cipher.doFinal(idCliente.get(randomIndex).toString().getBytes()));
 
             Mac mac = Mac.getInstance("HmacSHA256");
@@ -129,7 +135,7 @@ public class Cliente{
             escritor.println(uid);
             escritor.println(hmac_uid);
 
-            cipher.init(Cipher.ENCRYPT_MODE, K_AB1, new IvParameterSpec(iv));
+            cipher.init(Cipher.ENCRYPT_MODE, K_AB1, iv);
             String paquete_id = Base64.getEncoder().encodeToString(cipher.doFinal(paquetes.get(randomIndex).toString().getBytes()));
             mac.init(K_AB2);
             byte[] hmac = mac.doFinal(paquetes.get(randomIndex).toString().getBytes());
@@ -138,23 +144,35 @@ public class Cliente{
             escritor.println(paquete_id);
             escritor.println(hmac_paquete);
 
+            String respuestaEstado = lector.readLine();
+            String hmacEstado = lector.readLine();
 
+            byte[] respuestaEstadoDecoded64 = Base64.getDecoder().decode(respuestaEstado);
+            cipher.init(Cipher.DECRYPT_MODE, K_AB1, iv);
+            byte[] respuestaEstadoDecoded=cipher.doFinal(respuestaEstadoDecoded64);
+            mac.init(K_AB2);
+            byte[] computedHmacEstado = mac.doFinal(respuestaEstadoDecoded);
+            String computedHmacEstadoBase64 = Base64.getEncoder().encodeToString(computedHmacEstado);
 
+            if (!computedHmacEstadoBase64.equals(hmacEstado)) {
+                escritor.println("HMAC del estado no coincide");
+                return;
+            }
 
+            String EstadoPaquete = new String(respuestaEstadoDecoded);
 
+            escritor.println("TERMINAR");
+
+            ois.close();
 		}
 		catch (Exception e) {
 			e.printStackTrace();
 		}
-
-
-
-
-        
 		
 		socket.close();
 		escritor.close();
 		lector.close();
+        
 	}
 
     public static String generarCadena(int longitud) {
