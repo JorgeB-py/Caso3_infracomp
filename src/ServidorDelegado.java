@@ -63,6 +63,7 @@ public class ServidorDelegado extends Thread {
                 System.out.println("Cliente autenticado");
             }else{
                 System.out.println("Error en la autenticación");
+                System.out.println("Conexión terminada");
                 ois.close();
                 ois2.close();
                 throw new Exception("Error en la autenticación");
@@ -122,6 +123,8 @@ public class ServidorDelegado extends Thread {
                 System.out.println("Firma correcta");
             } else {
                 System.out.println("Firma no correcta");
+                System.out.println("Conexión terminada");
+                return;
             }
 
             int Y= Integer.parseInt(lector.readLine());
@@ -141,7 +144,6 @@ public class ServidorDelegado extends Thread {
             MessageDigest sha512 = MessageDigest.getInstance("SHA-512");
 
             byte[] hash = sha512.digest(masterkey.toByteArray());
-            System.out.println("Hash: " + hash);
 
             byte[] key1 = new byte[32];
             byte[] key2 = new byte[32];
@@ -151,7 +153,7 @@ public class ServidorDelegado extends Thread {
 
             SecretKey K_AB1 = new SecretKeySpec(key1, "AES");
             SecretKey K_AB2 = new SecretKeySpec(key2, "HmacSHA256");
-            System.out.println("Llaves asimétricas generadas exitosamente.");
+            System.out.println("Llaves simétricas generadas exitosamente.");
 
             String uid = lector.readLine();
             String hmac_uid = lector.readLine();
@@ -165,11 +167,6 @@ public class ServidorDelegado extends Thread {
             byte[] computedHmacUid = mac.doFinal(UIDDecoded);
             String computedHmacUidBase64 = Base64.getEncoder().encodeToString(computedHmacUid);
 
-            if (!computedHmacUidBase64.equals(hmac_uid)) {
-                escritor.println("HMAC del UID no coincide");
-                return;
-            }
-
             String paquete_id = lector.readLine();
             String hmac_paquete = lector.readLine();
 
@@ -181,16 +178,21 @@ public class ServidorDelegado extends Thread {
             byte[] computedHmacPaquete = mac.doFinal(paqueteIdDecoded);
             String computedHmacPaqueteBase64 = Base64.getEncoder().encodeToString(computedHmacPaquete);
 
-            if (!computedHmacPaqueteBase64.equals(hmac_paquete)) {
-                escritor.println("HMAC del paquete no coincide");
+            if (!computedHmacPaqueteBase64.equals(hmac_paquete) || !computedHmacUidBase64.equals(hmac_uid)) {
+                escritor.println("ERROR EN LA CONSULTA");
+                System.out.println("Conexión terminada");
                 return;
+            }else{
+                escritor.println("OK");
             }
 
-            System.out.println("hmacs validas");
-
-            Estados estadoRespuesta = paquetes.get(Integer.parseInt(new String(paqueteIdDecoded)));
-
-            System.out.println("Estado del paquete: " + estadoRespuesta);
+            Estados estadoRespuesta = Estados.DESCONOCIDO;
+            try {
+                idCliente.get(Integer.parseInt(new String(UIDDecoded)));
+                estadoRespuesta = paquetes.get(Integer.parseInt(new String(paqueteIdDecoded)));
+            } catch (Exception e) {
+                System.out.println("Paquete o cliente no encontrado");
+            }
 
             cipherSimetrica.init(Cipher.ENCRYPT_MODE, K_AB1, iv);
             String estadoRespuestaCifrado = Base64.getEncoder().encodeToString(cipherSimetrica.doFinal(estadoRespuesta.toString().getBytes()));
@@ -200,6 +202,11 @@ public class ServidorDelegado extends Thread {
 
             escritor.println(estadoRespuestaCifrado);
             escritor.println(hmacEstadoRespuestaBase64);
+
+            if (lector.readLine().equals("ERROR")) {
+                System.out.println("Error en la consulta");
+                return;
+            }
 
             if (lector.readLine().equals("TERMINAR")){
                 System.out.println("Conexión terminada");

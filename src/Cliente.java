@@ -39,7 +39,7 @@ public class Cliente{
         ArrayList<Integer> paquetes = new ArrayList<>();
 
         // Predefinir 32 paquetes con estados iniciales
-        for (int i = 1; i <= 32; i++) {
+        for (int i = 1; i <= 40; i++) {
             idCliente.add(i);
             paquetes.add(i+i);
         }
@@ -120,7 +120,7 @@ public class Cliente{
             SecretKey K_AB1 = new SecretKeySpec(key1, "AES");
             SecretKey K_AB2 = new SecretKeySpec(key2, "HmacSHA256");
 
-            System.out.println("Llaves asimétricas generadas exitosamente.");
+            System.out.println("Llaves simétricas generadas exitosamente.");
 
             Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
             cipher.init(Cipher.ENCRYPT_MODE, K_AB1, iv);
@@ -144,6 +144,13 @@ public class Cliente{
             escritor.println(paquete_id);
             escritor.println(hmac_paquete);
 
+            String respuestaHmac = lector.readLine();
+
+            if (respuestaHmac.equals("ERROR")) {
+                System.out.println("Error en la consulta");
+                return;
+            }
+
             String respuestaEstado = lector.readLine();
             String hmacEstado = lector.readLine();
 
@@ -155,11 +162,15 @@ public class Cliente{
             String computedHmacEstadoBase64 = Base64.getEncoder().encodeToString(computedHmacEstado);
 
             if (!computedHmacEstadoBase64.equals(hmacEstado)) {
-                escritor.println("HMAC del estado no coincide");
+                escritor.println("ERROR");
+                System.out.println("Error en la consulta");
                 return;
+            }else{
+                escritor.println("OK");
             }
 
             String EstadoPaquete = new String(respuestaEstadoDecoded);
+            System.out.println("Estado del paquete: " + EstadoPaquete);
 
             escritor.println("TERMINAR");
 
