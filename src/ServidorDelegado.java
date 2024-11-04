@@ -39,6 +39,7 @@ public class ServidorDelegado extends Thread {
         PublicKey publicKey = null;
         
         try {
+            // Leer las llaves
             ObjectInputStream ois = new ObjectInputStream(new FileInputStream(PRIVATE_KEY_FILE));
             privateKey = (PrivateKey) ois.readObject();
             System.out.println("Llave privada leída exitosamente.");
@@ -51,6 +52,7 @@ public class ServidorDelegado extends Thread {
 
             System.out.println(lector.readLine());
 
+            // Recibir el mensaje cifrado, desencriptarlo y enviarlo de vuelta
             Cipher cipher = Cipher.getInstance("RSA");
             cipher.init(Cipher.DECRYPT_MODE, privateKey);
             String receivedMessage = lector.readLine();
@@ -59,6 +61,7 @@ public class ServidorDelegado extends Thread {
             String mensajeDesencriptado = new String(mensajeBytes);
             escritor.println(mensajeDesencriptado);
 
+            // Autenticar al cliente
             if(lector.readLine().equals("OK")){
                 System.out.println("Cliente autenticado");
             }else{
@@ -160,6 +163,7 @@ public class ServidorDelegado extends Thread {
             String uid = lector.readLine();
             String hmac_uid = lector.readLine();
 
+            // Verificar HMAC del usuario
             byte[] uidDecoded64 = Base64.getDecoder().decode(uid);
             Cipher cipherSimetricaUID = Cipher.getInstance("AES/CBC/PKCS5Padding");
             cipherSimetricaUID.init(Cipher.DECRYPT_MODE, K_AB1, iv);
@@ -172,6 +176,7 @@ public class ServidorDelegado extends Thread {
             String paquete_id = lector.readLine();
             String hmac_paquete = lector.readLine();
 
+            // Verificar HMAC del paquete
             byte[] paqueteIdDecoded64 = Base64.getDecoder().decode(paquete_id);
             Cipher cipherSimetrica = Cipher.getInstance("AES/CBC/PKCS5Padding");
             cipherSimetrica.init(Cipher.DECRYPT_MODE, K_AB1, iv);
@@ -190,6 +195,7 @@ public class ServidorDelegado extends Thread {
                 escritor.println("OK");
             }
 
+            // Verificar si el paquete y el cliente existen
             Estados estadoRespuesta = Estados.DESCONOCIDO;
             try {
                 idCliente.get(Integer.parseInt(new String(UIDDecoded)));
@@ -198,6 +204,7 @@ public class ServidorDelegado extends Thread {
                 System.out.println("Paquete o cliente no encontrado");
             }
 
+            // Cifrar y enviar el estado del paquete
             cipherSimetrica.init(Cipher.ENCRYPT_MODE, K_AB1, iv);
             String estadoRespuestaCifrado = Base64.getEncoder().encodeToString(cipherSimetrica.doFinal(estadoRespuesta.toString().getBytes()));
             mac.init(K_AB2);
@@ -214,10 +221,12 @@ public class ServidorDelegado extends Thread {
                 return;
             }
 
+            // Terminar la conexión
             if (lector.readLine().equals("TERMINAR")){
                 System.out.println("Conexión terminada");
             }
 
+            // Cerrar los flujos y el socket
             reader.close();
             process.waitFor();
             process.destroy();
@@ -230,6 +239,7 @@ public class ServidorDelegado extends Thread {
             e.printStackTrace();
         }
     }
+    // Método para firmar un mensaje
     public static byte[] signData(byte[] data, PrivateKey privateKey) throws Exception {
         Signature signature = Signature.getInstance("SHA1withRSA");
         signature.initSign(privateKey);
@@ -237,3 +247,5 @@ public class ServidorDelegado extends Thread {
         return signature.sign();
     }
 }
+
+// Comentarios adicionales: se usó base64 con el fin de que no se alteraran los bits al momento de enviarlos por la red.
