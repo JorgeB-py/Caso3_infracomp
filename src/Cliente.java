@@ -6,11 +6,20 @@ import java.io.ObjectInputStream;
 import java.io.PrintWriter;
 import java.math.BigInteger;
 import java.net.Socket;
+import java.security.MessageDigest;
 import java.security.PublicKey;
 import javax.crypto.Cipher;
+import javax.crypto.Mac;
+import javax.crypto.SecretKey;
+import javax.crypto.spec.IvParameterSpec;
+import javax.crypto.spec.SecretKeySpec;
+
 import java.security.SecureRandom;
 import java.security.Signature;
+import java.util.ArrayList;
 import java.util.Base64;
+import java.util.HashMap;
+import java.util.Random;
 
 public class Cliente{
     public static final int PUERTO = 3400;
@@ -18,12 +27,22 @@ public class Cliente{
     public static final String PUBLIC_KEY_FILE = "publicKey.ser";
     private static final String CARACTERES = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
     private static final SecureRandom random = new SecureRandom();
+    
 	
 	public static void main(String[] args) throws IOException {
 		
 		Socket socket = null;
 		PrintWriter escritor = null;
 		BufferedReader lector = null;
+
+        ArrayList<Integer> idCliente = new ArrayList<>();
+        ArrayList<Integer> paquetes = new ArrayList<>();
+
+        // Predefinir 32 paquetes con estados iniciales
+        for (int i = 1; i <= 32; i++) {
+            idCliente.add(i);
+            paquetes.add(i+i);
+        }
 		
 		System.out.println("Comienza cliente");
 		PublicKey publicKey = null;
@@ -74,8 +93,51 @@ public class Cliente{
 
             int generatorNumberXY= (int)Math.pow(generatorNumberX, Y);
 
-            escritor.println(Math.pow(generatorNumber, Y));
+            BigInteger masterkey = BigInteger.valueOf(generatorNumberXY).mod(primeNumber);
+
+            escritor.println((int)Math.pow(generatorNumber, Y));
+
+            byte[] iv = lector.readLine().getBytes();
+
+            MessageDigest sha512 = MessageDigest.getInstance("SHA-512");
+
+            byte[] hash = sha512.digest(masterkey.toByteArray());
+
+            byte[] key1 = new byte[32];
+            byte[] key2 = new byte[32];
+
+            System.arraycopy(hash, 0, key1, 0, 32);
+            System.arraycopy(hash, 32, key2, 0, 32);
+            Random random = new Random();
+
+            // Seleccionar un índice aleatorio
+            int randomIndex = random.nextInt(idCliente.size()+4);
+
+            SecretKey K_AB1 = new SecretKeySpec(key1, "AES");
+            SecretKey K_AB2 = new SecretKeySpec(key2, "HmacSHA256");
+
+            Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+            cipher.init(Cipher.ENCRYPT_MODE, K_AB1, new IvParameterSpec(iv));
+            String uid = Base64.getEncoder().encodeToString(cipher.doFinal(idCliente.get(randomIndex).toString().getBytes()));
+
+            Mac mac = Mac.getInstance("HmacSHA256");
             
+            mac.init(K_AB2);
+            byte[] hmacBytes = mac.doFinal(idCliente.get(randomIndex).toString().getBytes());
+            String hmac_uid=Base64.getEncoder().encodeToString(hmacBytes);
+
+            escritor.println(uid);
+            escritor.println(hmac_uid);
+
+            cipher.init(Cipher.ENCRYPT_MODE, K_AB1, new IvParameterSpec(iv));
+            String paquete_id = Base64.getEncoder().encodeToString(cipher.doFinal(paquetes.get(randomIndex).toString().getBytes()));
+            mac.init(K_AB2);
+            byte[] hmac = mac.doFinal(paquetes.get(randomIndex).toString().getBytes());
+            String hmac_paquete=Base64.getEncoder().encodeToString(hmac);
+
+            escritor.println(paquete_id);
+            escritor.println(hmac_paquete);
+
 
 
 

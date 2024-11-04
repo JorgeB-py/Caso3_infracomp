@@ -5,15 +5,20 @@ import java.io.ObjectInputStream;
 import java.io.PrintWriter;
 import java.math.BigInteger;
 import java.net.Socket;
+import java.security.MessageDigest;
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.security.SecureRandom;
 import java.security.Signature;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.HashMap;
 
 import javax.crypto.Cipher;
-import javax.naming.spi.DirObjectFactory;
+import javax.crypto.Mac;
+import javax.crypto.SecretKey;
+import javax.crypto.spec.IvParameterSpec;
+import javax.crypto.spec.SecretKeySpec;
 
 public class ServidorDelegado extends Thread {
     private static final String PRIVATE_KEY_FILE = "privateKey.ser";
@@ -124,7 +129,62 @@ public class ServidorDelegado extends Thread {
 
             int generatorNumberXY= (int)Math.pow(generatorNumberX, Y);
 
-            
+            BigInteger masterkey = BigInteger.valueOf(generatorNumberXY).mod(primeNumber);
+
+            SecureRandom random = new SecureRandom();
+            byte[] ivBytes = new byte[16];
+            random.nextBytes(ivBytes);
+
+            escritor.println(ivBytes);
+
+            IvParameterSpec iv = new IvParameterSpec(ivBytes);
+
+            MessageDigest sha512 = MessageDigest.getInstance("SHA-512");
+
+            byte[] hash = sha512.digest(masterkey.toByteArray());
+
+            byte[] key1 = new byte[32];
+            byte[] key2 = new byte[32];
+
+            System.arraycopy(hash, 0, key1, 0, 32);
+            System.arraycopy(hash, 32, key2, 0, 32);
+
+            SecretKey K_AB1 = new SecretKeySpec(key1, "AES");
+            SecretKey K_AB2 = new SecretKeySpec(key2, "HmacSHA256");
+
+            int uid = Integer.parseInt(lector.readLine());
+            String hmac_uid = lector.readLine();
+
+            Mac mac = Mac.getInstance("HmacSHA256");
+            mac.init(K_AB2);
+            byte[] computedHmacUid = mac.doFinal(Integer.toString(uid).getBytes());
+            String computedHmacUidBase64 = Base64.getEncoder().encodeToString(computedHmacUid);
+
+            if (!computedHmacUidBase64.equals(hmac_uid)) {
+                escritor.println("HMAC del UID no coincide");
+                return;
+            }
+
+            String paquete_id = lector.readLine();
+            String hmac_paquete = lector.readLine();
+
+            int paqueteIdDecoded = Integer.parseInt(new String(Base64.getDecoder().decode(paquete_id)));
+            mac.init(K_AB2);
+            byte[] computedHmacPaquete = mac.doFinal(Integer.toString(paqueteIdDecoded).getBytes());
+            String computedHmacPaqueteBase64 = Base64.getEncoder().encodeToString(computedHmacPaquete);
+
+            if (!computedHmacPaqueteBase64.equals(hmac_paquete)) {
+                escritor.println("HMAC del paquete no coincide");
+                return;
+            }
+
+            System.out.println("hmacs validas");
+
+
+
+
+
+
 
             reader.close();
             process.waitFor();

@@ -23,7 +23,11 @@ public class Main {
         // Predefinir 32 paquetes con estados iniciales
         for (int i = 1; i <= 32; i++) {
             idCliente.add(i);
-            paquetes.put(i, Estados.ENOFICINA);
+            if (i % 2 == 0) {
+                paquetes.put(i+i, Estados.ENTREGADO);
+            } else {
+                paquetes.put(i+i, Estados.ENOFICINA);
+            }
         }
 
         ServerSocket ss = null;
