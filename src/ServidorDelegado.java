@@ -124,6 +124,8 @@ public class ServidorDelegado extends Thread {
             } else {
                 System.out.println("Firma no correcta");
                 System.out.println("Conexión terminada");
+                ois.close();
+                ois2.close();
                 return;
             }
 
@@ -181,6 +183,8 @@ public class ServidorDelegado extends Thread {
             if (!computedHmacPaqueteBase64.equals(hmac_paquete) || !computedHmacUidBase64.equals(hmac_uid)) {
                 escritor.println("ERROR EN LA CONSULTA");
                 System.out.println("Conexión terminada");
+                ois.close();
+                ois2.close();
                 return;
             }else{
                 escritor.println("OK");
@@ -205,6 +209,8 @@ public class ServidorDelegado extends Thread {
 
             if (lector.readLine().equals("ERROR")) {
                 System.out.println("Error en la consulta");
+                ois.close();
+                ois2.close();
                 return;
             }
 

@@ -18,7 +18,6 @@ import java.security.SecureRandom;
 import java.security.Signature;
 import java.util.ArrayList;
 import java.util.Base64;
-import java.util.HashMap;
 import java.util.Random;
 
 public class Cliente{
@@ -148,6 +147,7 @@ public class Cliente{
 
             if (respuestaHmac.equals("ERROR")) {
                 System.out.println("Error en la consulta");
+                ois.close();
                 return;
             }
 
@@ -164,6 +164,7 @@ public class Cliente{
             if (!computedHmacEstadoBase64.equals(hmacEstado)) {
                 escritor.println("ERROR");
                 System.out.println("Error en la consulta");
+                ois.close();
                 return;
             }else{
                 escritor.println("OK");

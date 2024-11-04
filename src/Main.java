@@ -62,6 +62,7 @@ public class Main {
             } else {
                 System.out.println("Opción no válida, intenta de nuevo.");
             }
+            sc.close();
         }
     }
 
