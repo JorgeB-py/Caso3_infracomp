@@ -1,3 +1,12 @@
+import java.io.IOException;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.concurrent.BrokenBarrierException;
+import java.util.concurrent.CyclicBarrier;
+
+
 import java.io.BufferedReader;
 import java.io.FileInputStream;
 import java.io.InputStreamReader;
@@ -22,25 +31,67 @@ import javax.crypto.SecretKey;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
-//TODO los prints deberían incluir el paso del protocolo
+public class ServidorIterativo extends Thread{
 
-public class ServidorDelegado extends Thread {
-    private static final String PRIVATE_KEY_FILE = "privateKey.ser";
-    private static final String PUBLIC_KEY_FILE = "publicKey.ser";
+    private final int PUERTO;
     private ArrayList<Integer> idClientes;
     private HashMap<Integer, Estados> paquetes;
-    private final CyclicBarrier barrierServidor;
+    private int numeroConsultas;
+    private final CyclicBarrier barreraMenu;
+    private static final String PRIVATE_KEY_FILE = "privateKey.ser";
+    private static final String PUBLIC_KEY_FILE = "publicKey.ser";
     private Socket socket;
 
-    public ServidorDelegado(ArrayList<Integer> idCliente, HashMap<Integer, Estados> paquetes, Socket socket, CyclicBarrier barrierServidor) {
-        this.idClientes = idCliente;
+    public ServidorIterativo(int PUERTO, ArrayList<Integer> idClientes, HashMap<Integer, Estados> paquetes, int numeroConsultas, CyclicBarrier barreraMenu){
+        this.PUERTO = PUERTO;
+        this.idClientes = idClientes;
         this.paquetes = paquetes;
-        this.socket = socket;
-        this.barrierServidor = barrierServidor;
+        this.numeroConsultas = numeroConsultas;
+        this.barreraMenu = barreraMenu;
     }
 
-    public void run() {
 
+    public void run() {
+        ServerSocket ss = null;
+        try {
+            ss = new ServerSocket(PUERTO);
+            System.out.println("Servidor escuchando en el puerto " + PUERTO);
+
+            // Esperar conexiones y crear delegados
+            while (numeroConsultas>0) {
+                socket = ss.accept();
+                protocoloServidor();
+                numeroConsultas--;
+
+            }
+
+            
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            if (ss != null)
+                try {
+                    ss.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+        }
+
+
+        //Barrera para que no se muestre el menú de opciones hasta que todos terminen
+        try {
+            barreraMenu.await();
+        } catch (InterruptedException e) {
+            
+            e.printStackTrace();
+        } catch (BrokenBarrierException e) {
+            
+            e.printStackTrace();
+        }
+    }
+
+
+    private void protocoloServidor(){
         PrivateKey privateKey = null;
         PublicKey publicKey = null;
         
@@ -53,7 +104,6 @@ public class ServidorDelegado extends Thread {
             publicKey = (PublicKey) ois2.readObject();
             System.out.println("Llave pública leída exitosamente.");
 
-            
 
             BufferedReader lector = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             PrintWriter escritor = new PrintWriter(socket.getOutputStream(), true);
@@ -248,25 +298,5 @@ public class ServidorDelegado extends Thread {
         } catch (Exception e) {
             e.printStackTrace();
         }
-
-        //Barrera para esperar a los delegados
-        try {
-            barrierServidor.await();
-        } catch (InterruptedException e) {
-            
-            e.printStackTrace();
-        } catch (BrokenBarrierException e) {
-            
-            e.printStackTrace();
-        }
-    }
-    // Método para firmar un mensaje
-    public static byte[] signData(byte[] data, PrivateKey privateKey) throws Exception {
-        Signature signature = Signature.getInstance("SHA1withRSA");
-        signature.initSign(privateKey);
-        signature.update(data);
-        return signature.sign();
     }
 }
-
-// Comentarios adicionales: se usó base64 con el fin de que no se alteraran los bits al momento de enviarlos por la red.

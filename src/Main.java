@@ -1,8 +1,6 @@
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
-import java.net.ServerSocket;
-import java.net.Socket;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.PrivateKey;
@@ -10,6 +8,8 @@ import java.security.PublicKey;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Scanner;
+import java.util.concurrent.BrokenBarrierException;
+import java.util.concurrent.CyclicBarrier;
 
 public class Main {
     private static final int PUERTO = 3400;
@@ -17,53 +17,105 @@ public class Main {
     private static final String PRIVATE_KEY_FILE = "privateKey.ser";
 
     public static void main(String[] args) throws IOException {
-        ArrayList<Integer> idCliente = new ArrayList<>();
+        ArrayList<Integer> idClientes = new ArrayList<>();
         HashMap<Integer, Estados> paquetes = new HashMap<>();
+
+        //TODO al menos que sea random
 
         // Predefinir 32 paquetes con estados iniciales
         for (int i = 1; i <= 32; i++) {
-            idCliente.add(i);
+            idClientes.add(i);
             if (i % 2 == 0) {
+                //TODO Hacer diccionario y random en vez de enum
                 paquetes.put(i+i, Estados.ENTREGADO);
             } else {
                 paquetes.put(i+i, Estados.ENOFICINA);
             }
         }
 
-        ServerSocket ss = null;
         boolean continuar = true;
 
+        Scanner sc = new Scanner(System.in);
+        
         while (continuar) {
+
             System.out.println("Servidor iniciado. Selecciona una opción:");
             System.out.println("1. Generar pareja de llaves asimétricas");
-            System.out.println("2. Ejecutar y crear delegados");
+            System.out.println("2. Ejecutar y crear delegados concurrentes");
+            System.out.println("3. Servidor y cliente iterativo");
+            System.out.println("4. Salir");
 
-            Scanner sc = new Scanner(System.in);
+
             int opcion = sc.nextInt();
 
             if (opcion == 1) {
+
                 generarLlaves();
+
             } else if (opcion == 2) {
-                try {
-                    ss = new ServerSocket(PUERTO);
-                    System.out.println("Servidor escuchando en el puerto " + PUERTO);
-                    
-                    // Esperar conexiones y crear delegados
-                    while (true) {
-                        Socket socket = ss.accept();
-                        ServidorDelegado servidor = new ServidorDelegado(idCliente, paquetes, socket);
-                        servidor.start();
-                    }
-                } catch (Exception e) {
-                    e.printStackTrace();
-                } finally {
-                    if (ss != null) ss.close();
+
+                
+                System.out.println("Ingrese el número de clientes concurrentes");
+                int numeroClientes = sc.nextInt();
+
+                //Barrera que una vez llegan todos los clientes, el servidor principal y el main, permite que se vuelva a mostrar el menú de opciones
+                //Necesitamos que terminen todos los clientes, el main, y el servidor principal para que se vuelva a mostrar el menú
+                CyclicBarrier barrierMenu = new CyclicBarrier(numeroClientes+2);
+                //Creo el servidor principal
+                ServidorConcurrente servidorPrincipal = new ServidorConcurrente(PUERTO, idClientes, paquetes, numeroClientes, barrierMenu);
+                servidorPrincipal.start();
+
+                //Creamos los clientes concurrentes
+                for(int i = 0; i < numeroClientes; i++){
+                    //Cada cliente hace solo una consulta
+                    Cliente cliente = new Cliente(1, barrierMenu);
+                    cliente.start();
                 }
+
+
+                // try {
+                //     barrierMenu.await();
+                // } catch (InterruptedException e) {
+                //     e.printStackTrace();
+                // } catch (BrokenBarrierException e) {
+                //     e.printStackTrace();
+                // }
+
+                
+
+            } else if (opcion == 3) {
+
+                System.out.println("Ingrese el número de consultas (que hará el cliente iterativamente)");
+                int numeroConsultas = sc.nextInt();
+
+                //Barrera que una vez llegan todos el cliente, el servidor y el main, permite que se vuelva a mostrar el menú de opciones
+                CyclicBarrier barrierMenu = new CyclicBarrier(3);
+                //Creo el servidor principal
+                ServidorIterativo servidor = new ServidorIterativo(PUERTO, idClientes, paquetes, numeroConsultas, barrierMenu);
+                servidor.start();
+
+                Cliente cliente = new Cliente(numeroConsultas, barrierMenu);
+                cliente.start();
+
+                try {
+                    barrierMenu.await();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                } catch (BrokenBarrierException e) {
+                    e.printStackTrace();
+                }
+
+
+
+            } else if (opcion == 4) {
+                
+                continuar = false;
+
             } else {
                 System.out.println("Opción no válida, intenta de nuevo.");
             }
-            sc.close();
         }
+
     }
 
     private static void generarLlaves() {
@@ -83,6 +135,7 @@ public class Main {
             try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(PRIVATE_KEY_FILE))) {
                 oos.writeObject(privateKey);
             }
+
             System.out.println("Llave privada guardada en " + PRIVATE_KEY_FILE);
             
             System.out.println("¡Pareja de llaves generada correctamente!");
@@ -91,4 +144,6 @@ public class Main {
             e.printStackTrace();
         }
     }
+
+    //TODO verificar que se hayan utilizado todos los algortimos
 }
