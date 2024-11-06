@@ -7,6 +7,7 @@ import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Random;
 import java.util.Scanner;
 import java.util.concurrent.BrokenBarrierException;
 import java.util.concurrent.CyclicBarrier;
@@ -23,14 +24,20 @@ public class Main {
         //TODO al menos que sea random
 
         // Predefinir 32 paquetes con estados iniciales
+
+        HashMap<Integer, Estados> estadosDict = new HashMap<>();
+        estadosDict.put(0, Estados.ENOFICINA);
+        estadosDict.put(1, Estados.RECOGIDO);
+        estadosDict.put(2, Estados.ENCLASIFICACION);
+        estadosDict.put(3, Estados.DESPACHADO);
+        estadosDict.put(4, Estados.ENENTREGA);
+        estadosDict.put(5, Estados.ENTREGADO);
+        
         for (int i = 1; i <= 32; i++) {
             idClientes.add(i);
-            if (i % 2 == 0) {
-                //TODO Hacer diccionario y random en vez de enum
-                paquetes.put(i+i, Estados.ENTREGADO);
-            } else {
-                paquetes.put(i+i, Estados.ENOFICINA);
-            }
+            Random random = new Random();
+            int randomInt = random.nextInt(5);
+            paquetes.put(i+i, estadosDict.get(randomInt));
         }
 
         boolean continuar = true;
@@ -100,6 +107,7 @@ public class Main {
 
                 try {
                     barrierMenu.await();
+                    continuar = false;
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 } catch (BrokenBarrierException e) {
