@@ -69,7 +69,7 @@ public class ServidorDelegado extends Thread {
             String mensajeDesencriptado = new String(mensajeBytes);
             escritor.println(mensajeDesencriptado);
 
-            //TODO no tienes qeu autenticar aquí al cliente
+            //TODO no tienes que autenticar aquí al cliente
             // Autenticar al cliente
             if(lector.readLine().equals("OK")){
                 System.out.println("Servidor autenticado");
@@ -228,6 +228,16 @@ public class ServidorDelegado extends Thread {
 
             escritor.println(estadoRespuestaCifrado);
             escritor.println(hmacEstadoRespuestaBase64);
+
+            // Cifrar con llave asimétrica
+            //cipher = Cipher.getInstance("RSA");
+            //cipher.init(Cipher.ENCRYPT_MODE, privateKey);
+            //String estadoRespuestaCifrado = Base64.getEncoder().encodeToString(cipher.doFinal(estadoRespuesta.toString().getBytes()));
+            
+
+
+            escritor.println(estadoRespuestaCifrado);
+            //escritor.println(hmacEstadoRespuestaBase64);
 
             if (lector.readLine().equals("ERROR")) {
                 System.out.println("Error en la consulta");

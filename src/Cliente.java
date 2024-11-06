@@ -169,9 +169,9 @@ public class Cliente extends Thread{
                     return;
                 }
 
-                String respuestaEstado = lector.readLine();
-                String hmacEstado = lector.readLine();
+                String respuestaEstado =lector.readLine();
 
+                // Decodificar respuesta simétrico
                 byte[] respuestaEstadoDecoded64 = Base64.getDecoder().decode(respuestaEstado);
                 cipher.init(Cipher.DECRYPT_MODE, K_AB1, iv);
                 byte[] respuestaEstadoDecoded=cipher.doFinal(respuestaEstadoDecoded64);
@@ -179,17 +179,18 @@ public class Cliente extends Thread{
                 byte[] computedHmacEstado = mac.doFinal(respuestaEstadoDecoded);
                 String computedHmacEstadoBase64 = Base64.getEncoder().encodeToString(computedHmacEstado);
 
-                if (!computedHmacEstadoBase64.equals(hmacEstado)) {
-                    escritor.println("ERROR");
-                    System.out.println("Error en la consulta");
-                    ois.close();
-                    return;
-                }else{
-                    escritor.println("OK");
-                }
+                // Decodificar respuesta asimétrico
+                //byte[] respuestaEstadoDecoded64 = Base64.getDecoder().decode(respuestaEstado);
+                //cipher = Cipher.getInstance("RSA");
+                //cipher.init(Cipher.DECRYPT_MODE, publicKey);
+                //byte[] respuestaEstadoDecoded=cipher.doFinal(respuestaEstadoDecoded64);
+
+
 
                 String EstadoPaquete = new String(respuestaEstadoDecoded);
                 System.out.println("Estado del paquete: " + EstadoPaquete);
+
+                escritor.println("OK");
 
                 escritor.println("TERMINAR");
 
