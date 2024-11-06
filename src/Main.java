@@ -60,7 +60,7 @@ public class Main {
 
                 //Barrera que una vez llegan todos los clientes, el servidor principal y el main, permite que se vuelva a mostrar el menú de opciones
                 //Necesitamos que terminen todos los clientes, el main, y el servidor principal para que se vuelva a mostrar el menú
-                CyclicBarrier barrierMenu = new CyclicBarrier(numeroClientes+2);
+                CyclicBarrier barrierMenu = new CyclicBarrier(numeroClientes+1);
                 //Creo el servidor principal
                 ServidorConcurrente servidorPrincipal = new ServidorConcurrente(PUERTO, idClientes, paquetes, numeroClientes, barrierMenu);
                 servidorPrincipal.start();
@@ -73,13 +73,14 @@ public class Main {
                 }
 
 
-                // try {
-                //     barrierMenu.await();
-                // } catch (InterruptedException e) {
-                //     e.printStackTrace();
-                // } catch (BrokenBarrierException e) {
-                //     e.printStackTrace();
-                // }
+                try {
+                    barrierMenu.await();
+                    continuar = false;
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                } catch (BrokenBarrierException e) {
+                    e.printStackTrace();
+                }
 
                 
 

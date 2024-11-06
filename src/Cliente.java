@@ -211,15 +211,15 @@ public class Cliente extends Thread{
         }
 
 		
-        // try {
-        //     barreraMenu.await();
-        // } catch (InterruptedException e) {
+        try {
+            barreraMenu.await();
+        } catch (InterruptedException e) {
             
-        //     e.printStackTrace();
-        // } catch (BrokenBarrierException e) {
+           e.printStackTrace();
+        } catch (BrokenBarrierException e) {
             
-        //     e.printStackTrace();
-        // }
+           e.printStackTrace();
+        }
 
 	}
 

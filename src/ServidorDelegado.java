@@ -250,15 +250,15 @@ public class ServidorDelegado extends Thread {
         }
 
         //Barrera para esperar a los delegados
-        try {
-            barrierServidor.await();
-        } catch (InterruptedException e) {
+        //try {
+        //    barrierServidor.await();
+        //} catch (InterruptedException e) {
             
-            e.printStackTrace();
-        } catch (BrokenBarrierException e) {
+        //    e.printStackTrace();
+        //} catch (BrokenBarrierException e) {
             
-            e.printStackTrace();
-        }
+        //    e.printStackTrace();
+        //}
     }
     // Método para firmar un mensaje
     public static byte[] signData(byte[] data, PrivateKey privateKey) throws Exception {
