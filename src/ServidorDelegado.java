@@ -84,6 +84,11 @@ public class ServidorDelegado extends Thread {
             Process process = processBuilder.start();
             // Leer la salida del commando
             BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+            BufferedReader errorReader = new BufferedReader(new InputStreamReader(process.getErrorStream()));
+            // Read and discard the lines from errorReader to avoid printing to console
+            while (errorReader.readLine() != null) {
+                // Do nothing
+            }
             String line;
             StringBuilder hexPrime = new StringBuilder();
             BigInteger primeNumber = null;
