@@ -171,6 +171,8 @@ public class Cliente extends Thread{
 
                 String respuestaEstado =lector.readLine();
 
+                
+                //SIMÉTRICO (COMENTE SI VA UTILIZAR EL MODO ASIMÉTRICO, COMENTE EN EL CLIENTE TAMBIÉN)
                 // Decodificar respuesta simétrico
                 byte[] respuestaEstadoDecoded64 = Base64.getDecoder().decode(respuestaEstado);
                 cipher.init(Cipher.DECRYPT_MODE, K_AB1, iv);
@@ -178,6 +180,9 @@ public class Cliente extends Thread{
                 mac.init(K_AB2);
                 byte[] computedHmacEstado = mac.doFinal(respuestaEstadoDecoded);
                 String computedHmacEstadoBase64 = Base64.getEncoder().encodeToString(computedHmacEstado);
+
+                
+                //ASIMÉTRICO (DESCOMENTE EL SIGUIENTE CÓDIGO PARA VER EN MODO ASIMÉTRICO, TAMBIÉN DEBE DESCOMENTAR EL CÓDIGO ASIMÉTRICO DEL SERVIDOR)
 
                 // Decodificar respuesta asimétrico
                 //byte[] respuestaEstadoDecoded64 = Base64.getDecoder().decode(respuestaEstado);

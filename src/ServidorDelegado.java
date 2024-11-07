@@ -22,6 +22,8 @@ import javax.crypto.SecretKey;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
+
+
 //TODO los prints deberían incluir el paso del protocolo
 
 public class ServidorDelegado extends Thread {
@@ -32,11 +34,21 @@ public class ServidorDelegado extends Thread {
     private final CyclicBarrier barrierServidor;
     private Socket socket;
 
-    public ServidorDelegado(ArrayList<Integer> idCliente, HashMap<Integer, Estados> paquetes, Socket socket, CyclicBarrier barrierServidor) {
+    private final ArrayList<Long> tiemposReto;
+    private final ArrayList<Long> tiemposDiffieHellman;
+    private final ArrayList<Long> tiemposVerificacion;
+    private final ArrayList<Long> tiemposCifrado;
+    
+
+    public ServidorDelegado(ArrayList<Integer> idCliente, HashMap<Integer, Estados> paquetes, Socket socket, CyclicBarrier barrierServidor, ArrayList<Long> tiemposReto, ArrayList<Long> tiemposDiffieHellman, ArrayList<Long> tiemposVerificacion, ArrayList<Long> tiemposCifrado) {
         this.idClientes = idCliente;
         this.paquetes = paquetes;
         this.socket = socket;
         this.barrierServidor = barrierServidor;
+        this.tiemposReto = tiemposReto;
+        this.tiemposDiffieHellman = tiemposDiffieHellman;
+        this.tiemposVerificacion = tiemposVerificacion;
+        this.tiemposCifrado = tiemposCifrado;
     }
 
     public void run() {
@@ -60,6 +72,8 @@ public class ServidorDelegado extends Thread {
 
             System.out.println(lector.readLine());
 
+            long retoStartTime = System.nanoTime();
+
             // Recibir el mensaje cifrado, desencriptarlo y enviarlo de vuelta
             Cipher cipher = Cipher.getInstance("RSA");
             cipher.init(Cipher.DECRYPT_MODE, privateKey);
@@ -69,8 +83,11 @@ public class ServidorDelegado extends Thread {
             String mensajeDesencriptado = new String(mensajeBytes);
             escritor.println(mensajeDesencriptado);
 
+            long retoEndTime = System.nanoTime();
+
+
             //TODO no tienes que autenticar aquí al cliente
-            // Autenticar al cliente
+            // Autenticar al servidor
             if(lector.readLine().equals("OK")){
                 System.out.println("Servidor autenticado");
             }else{
@@ -80,6 +97,9 @@ public class ServidorDelegado extends Thread {
                 ois2.close();
                 throw new Exception("Error en la autenticación");
             }
+
+            long diffieHellmanStartTime = System.nanoTime();
+
             ProcessBuilder processBuilder = new ProcessBuilder("lib\\OpenSSL-1.1.1h_win32\\openssl.exe", "dhparam", "-text", "1024");
             Process process = processBuilder.start();
             // Leer la salida del commando
@@ -119,6 +139,8 @@ public class ServidorDelegado extends Thread {
             escritor.println(generatorNumber);
             escritor.println(primeNumber.toString());
             escritor.println(generatorNumberX);
+
+            long diffieHellmanEndTime = System.nanoTime(); 
             
             BigInteger firmar = BigInteger.valueOf(generatorNumber)
                 .add(BigInteger.valueOf(generatorNumberX))
@@ -177,6 +199,8 @@ public class ServidorDelegado extends Thread {
             String uid = lector.readLine();
             String hmac_uid = lector.readLine();
 
+            long verificarStartTime = System.nanoTime();
+
             // Verificar HMAC del usuario
             byte[] uidDecoded64 = Base64.getDecoder().decode(uid);
             Cipher cipherSimetricaUID = Cipher.getInstance("AES/CBC/PKCS5Padding");
@@ -209,6 +233,7 @@ public class ServidorDelegado extends Thread {
                 escritor.println("OK");
             }
 
+
             // Verificar si el paquete y el cliente existen
             //TODO Si algo verificar que estén relaciones y que sea menor a 32 
             Estados estadoRespuesta = Estados.DESCONOCIDO;
@@ -218,6 +243,12 @@ public class ServidorDelegado extends Thread {
             } catch (Exception e) {
                 System.out.println("Paquete o cliente no encontrado");
             }
+
+            long verificarEndTime = System.nanoTime();
+
+            long cifrarStartTime = System.nanoTime();
+
+            //SIMÉTRICO (COMENTE SI VA UTILIZAR EL MODO ASIMÉTRICO, COMENTE EN EL CLIENTE TAMBIÉN)
 
             // Cifrar y enviar el estado del paquete
             cipherSimetrica.init(Cipher.ENCRYPT_MODE, K_AB1, iv);
@@ -229,15 +260,17 @@ public class ServidorDelegado extends Thread {
             escritor.println(estadoRespuestaCifrado);
             escritor.println(hmacEstadoRespuestaBase64);
 
+
+
+            //ASIMÉTRICO (DESCOMENTE EL SIGUIENTE CÓDIGO PARA VER EN MODO ASIMÉTRICO, TAMBIÉN DEBE DESCOMENTAR EL CÓDIGO ASIMÉTRICO DEL CLIENTE)
+
             // Cifrar con llave asimétrica
             //cipher = Cipher.getInstance("RSA");
             //cipher.init(Cipher.ENCRYPT_MODE, privateKey);
             //String estadoRespuestaCifrado = Base64.getEncoder().encodeToString(cipher.doFinal(estadoRespuesta.toString().getBytes()));
-            
+            //escritor.println(estadoRespuestaCifrado);
 
-
-            escritor.println(estadoRespuestaCifrado);
-            //escritor.println(hmacEstadoRespuestaBase64);
+            long cifrarEndTime = System.nanoTime();
 
             if (lector.readLine().equals("ERROR")) {
                 System.out.println("Error en la consulta");
@@ -260,20 +293,39 @@ public class ServidorDelegado extends Thread {
             ois2.close();
             escritor.close();
             lector.close();
+
+            synchronized (tiemposReto){
+                tiemposReto.add(retoEndTime-retoStartTime);
+            }
+
+            synchronized (tiemposDiffieHellman){
+                tiemposDiffieHellman.add(diffieHellmanEndTime-diffieHellmanStartTime);
+            }
+
+            synchronized (tiemposVerificacion){
+                tiemposVerificacion.add(verificarEndTime-verificarStartTime);
+            }
+
+            synchronized (tiemposCifrado){
+                tiemposCifrado.add(cifrarEndTime-cifrarStartTime);
+            }
+            
         } catch (Exception e) {
             e.printStackTrace();
         }
 
+        
+
         //Barrera para esperar a los delegados
-        //try {
-        //    barrierServidor.await();
-        //} catch (InterruptedException e) {
+        try {
+           barrierServidor.await();
+        } catch (InterruptedException e) {
             
-        //    e.printStackTrace();
-        //} catch (BrokenBarrierException e) {
+           e.printStackTrace();
+        } catch (BrokenBarrierException e) {
             
-        //    e.printStackTrace();
-        //}
+           e.printStackTrace();
+        }
     }
     // Método para firmar un mensaje
     public static byte[] signData(byte[] data, PrivateKey privateKey) throws Exception {

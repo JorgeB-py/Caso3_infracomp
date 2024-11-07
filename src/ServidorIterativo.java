@@ -41,13 +41,19 @@ public class ServidorIterativo extends Thread{
     private static final String PRIVATE_KEY_FILE = "privateKey.ser";
     private static final String PUBLIC_KEY_FILE = "publicKey.ser";
     private Socket socket;
+    private final ArrayList<Long> tiemposReto;
+    private final ArrayList<Long> tiemposDiffieHellman;
+    private final ArrayList<Long> tiemposVerificacion;
 
-    public ServidorIterativo(int PUERTO, ArrayList<Integer> idClientes, HashMap<Integer, Estados> paquetes, int numeroConsultas, CyclicBarrier barreraMenu){
+    public ServidorIterativo(int PUERTO, ArrayList<Integer> idClientes, HashMap<Integer, Estados> paquetes, int numeroConsultas, CyclicBarrier barreraMenu, ArrayList<Long> tiemposReto, ArrayList<Long> tiemposDiffieHellman, ArrayList<Long> tiemposVerificacion){
         this.PUERTO = PUERTO;
         this.idClientes = idClientes;
         this.paquetes = paquetes;
         this.numeroConsultas = numeroConsultas;
         this.barreraMenu = barreraMenu;
+        this.tiemposReto = tiemposReto;
+        this.tiemposDiffieHellman = tiemposDiffieHellman;
+        this.tiemposVerificacion = tiemposVerificacion;
     }
 
 
@@ -110,6 +116,8 @@ public class ServidorIterativo extends Thread{
 
             System.out.println(lector.readLine());
 
+            long retoStartTime = System.nanoTime();
+
             // Recibir el mensaje cifrado, desencriptarlo y enviarlo de vuelta
             Cipher cipher = Cipher.getInstance("RSA");
             cipher.init(Cipher.DECRYPT_MODE, privateKey);
@@ -118,6 +126,8 @@ public class ServidorIterativo extends Thread{
             byte[] mensajeBytes = cipher.doFinal(decodedMessage);
             String mensajeDesencriptado = new String(mensajeBytes);
             escritor.println(mensajeDesencriptado);
+
+            long retoEndTime = System.nanoTime();
 
             //TODO no tienes qeu autenticar aquí al cliente
             // Autenticar al cliente
@@ -130,6 +140,10 @@ public class ServidorIterativo extends Thread{
                 ois2.close();
                 throw new Exception("Error en la autenticación");
             }
+
+            long diffieHellmanStartTime = System.nanoTime();
+
+
             ProcessBuilder processBuilder = new ProcessBuilder("lib\\OpenSSL-1.1.1h_win32\\openssl.exe", "dhparam", "-text", "1024");
             Process process = processBuilder.start();
             // Leer la salida del commando
@@ -169,6 +183,8 @@ public class ServidorIterativo extends Thread{
             escritor.println(generatorNumber);
             escritor.println(primeNumber.toString());
             escritor.println(generatorNumberX);
+
+            long diffieHellmanEndTime = System.nanoTime();
             
             BigInteger firmar = BigInteger.valueOf(generatorNumber)
                 .add(BigInteger.valueOf(generatorNumberX))
@@ -240,6 +256,8 @@ public class ServidorIterativo extends Thread{
             String paquete_id = lector.readLine();
             String hmac_paquete = lector.readLine();
 
+            long verificarStartTime = System.nanoTime();
+
             // Verificar HMAC del paquete
             byte[] paqueteIdDecoded64 = Base64.getDecoder().decode(paquete_id);
             Cipher cipherSimetrica = Cipher.getInstance("AES/CBC/PKCS5Padding");
@@ -259,6 +277,7 @@ public class ServidorIterativo extends Thread{
                 escritor.println("OK");
             }
 
+
             // Verificar si el paquete y el cliente existen
             //TODO Si algo verificar que estén relaciones y que sea menor a 32 
             Estados estadoRespuesta = Estados.DESCONOCIDO;
@@ -268,6 +287,8 @@ public class ServidorIterativo extends Thread{
             } catch (Exception e) {
                 System.out.println("Paquete o cliente no encontrado");
             }
+
+            long verificarEndTime = System.nanoTime();
 
             // Cifrar y enviar el estado del paquete
             cipherSimetrica.init(Cipher.ENCRYPT_MODE, K_AB1, iv);
@@ -300,6 +321,20 @@ public class ServidorIterativo extends Thread{
             ois2.close();
             escritor.close();
             lector.close();
+
+            synchronized (tiemposReto){
+                tiemposReto.add(retoEndTime-retoStartTime);
+            }
+
+            synchronized (tiemposDiffieHellman){
+                tiemposDiffieHellman.add(diffieHellmanEndTime-diffieHellmanStartTime);
+            }
+
+            synchronized (tiemposVerificacion){
+                tiemposVerificacion.add(verificarEndTime-verificarStartTime);
+            }
+
+            
         } catch (Exception e) {
             e.printStackTrace();
         }

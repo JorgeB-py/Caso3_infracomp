@@ -46,7 +46,8 @@ public class Main {
         
         while (continuar) {
 
-            System.out.println("Servidor iniciado. Selecciona una opción:");
+            System.out.println("---------------------------------------------------------");
+            System.out.println("---------------------------MENU--------------------------");
             System.out.println("1. Generar pareja de llaves asimétricas");
             System.out.println("2. Ejecutar y crear delegados concurrentes");
             System.out.println("3. Servidor y cliente iterativo");
@@ -67,9 +68,15 @@ public class Main {
 
                 //Barrera que una vez llegan todos los clientes, el servidor principal y el main, permite que se vuelva a mostrar el menú de opciones
                 //Necesitamos que terminen todos los clientes, el main, y el servidor principal para que se vuelva a mostrar el menú
-                CyclicBarrier barrierMenu = new CyclicBarrier(numeroClientes+1);
+                CyclicBarrier barrierMenu = new CyclicBarrier(numeroClientes+2);
                 //Creo el servidor principal
-                ServidorConcurrente servidorPrincipal = new ServidorConcurrente(PUERTO, idClientes, paquetes, numeroClientes, barrierMenu);
+
+                ArrayList<Long> tiemposReto = new ArrayList<>();
+                ArrayList<Long> tiemposDiffieHellman = new ArrayList<>();
+                ArrayList<Long> tiemposVerificacion = new ArrayList<>();
+                ArrayList<Long> tiemposCifrado = new ArrayList<>();
+
+                ServidorConcurrente servidorPrincipal = new ServidorConcurrente(PUERTO, idClientes, paquetes, numeroClientes, barrierMenu, tiemposReto, tiemposDiffieHellman, tiemposVerificacion, tiemposCifrado);
                 servidorPrincipal.start();
 
                 //Creamos los clientes concurrentes
@@ -82,24 +89,63 @@ public class Main {
 
                 try {
                     barrierMenu.await();
-                    continuar = false;
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 } catch (BrokenBarrierException e) {
                     e.printStackTrace();
                 }
 
-                
+
+                // CALCULAR PROMEDIO RETO
+                long sumReto = 0;
+                for (Long valueReto : tiemposReto) {
+                    sumReto += valueReto;
+                }
+                double averageReto = (double) sumReto / tiemposReto.size();
+
+                // CALCULAR PROMEDIO DIFFIE
+                long sumDiffie = 0;
+                for (Long valueDiffie : tiemposDiffieHellman) {
+                    sumDiffie += valueDiffie;
+                }
+                double averageDiffie = (double) sumDiffie / tiemposDiffieHellman.size();
+
+
+                // CALCULAR PROMEDIO VERIFICAR
+                long sumVerificacion = 0;
+                for (Long valueVerificacion : tiemposVerificacion) {
+                    sumVerificacion += valueVerificacion;
+                }
+                double averageVerificacion = (double) sumVerificacion / tiemposDiffieHellman.size();
+
+                // CALCULAR PROMEDIO CIFRADO
+                long sumCifrado = 0;
+                for (Long valueCifrado : tiemposCifrado) {
+                    sumCifrado += valueCifrado;
+                }
+                double averageCifrado = (double) sumCifrado / tiemposDiffieHellman.size();
+
+                System.out.println("---------------------RESULTADOS-----------------");
+                System.out.println("tiempo promedio reto: " + (averageReto/1_000_000.0) + " ms");
+                System.out.println("tiempo promedio Diffie-Hellman: " + (averageDiffie/1_000_000.0) + " ms");
+                System.out.println("tiempo promedio Verificacion: " + (averageVerificacion/1_000_000.0) + " ms");
+                System.out.println("tiempo promedio cifrado: " + (averageCifrado/1_000_000.0) + " ms");
+
 
             } else if (opcion == 3) {
 
                 System.out.println("Ingrese el número de consultas (que hará el cliente iterativamente)");
                 int numeroConsultas = sc.nextInt();
 
+
+                ArrayList<Long> tiemposReto = new ArrayList<>();
+                ArrayList<Long> tiemposDiffieHellman = new ArrayList<>();
+                ArrayList<Long> tiemposVerificacion = new ArrayList<>();
+
                 //Barrera que una vez llegan todos el cliente, el servidor y el main, permite que se vuelva a mostrar el menú de opciones
                 CyclicBarrier barrierMenu = new CyclicBarrier(3);
                 //Creo el servidor principal
-                ServidorIterativo servidor = new ServidorIterativo(PUERTO, idClientes, paquetes, numeroConsultas, barrierMenu);
+                ServidorIterativo servidor = new ServidorIterativo(PUERTO, idClientes, paquetes, numeroConsultas, barrierMenu, tiemposReto, tiemposDiffieHellman, tiemposVerificacion);
                 servidor.start();
 
                 Cliente cliente = new Cliente(numeroConsultas, barrierMenu);
@@ -107,12 +153,38 @@ public class Main {
 
                 try {
                     barrierMenu.await();
-                    continuar = false;
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 } catch (BrokenBarrierException e) {
                     e.printStackTrace();
                 }
+
+                // CALCULAR PROMEDIO RETO
+                long sumReto = 0;
+                for (Long valueReto : tiemposReto) {
+                    sumReto += valueReto;
+                }
+                double averageReto = (double) sumReto / tiemposReto.size();
+
+                // CALCULAR PROMEDIO DIFFIE
+                long sumDiffie = 0;
+                for (Long valueDiffie : tiemposDiffieHellman) {
+                    sumDiffie += valueDiffie;
+                }
+                double averageDiffie = (double) sumDiffie / tiemposDiffieHellman.size();
+
+
+                // CALCULAR PROMEDIO VERIFICAR
+                long sumVerificacion = 0;
+                for (Long valueVerificacion : tiemposVerificacion) {
+                    sumVerificacion += valueVerificacion;
+                }
+                double averageVerificacion = (double) sumVerificacion / tiemposDiffieHellman.size();
+
+                System.out.println("---------------------RESULTADOS-----------------");
+                System.out.println("tiempo promedio reto: " + (averageReto/1_000_000.0) + " ms");
+                System.out.println("tiempo promedio Diffie-Hellman: " + (averageDiffie/1_000_000.0) + " ms");
+                System.out.println("tiempo promedio Verificacion: " + (averageVerificacion/1_000_000.0) + " ms");
 
 
 

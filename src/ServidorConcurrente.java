@@ -14,13 +14,21 @@ public class ServidorConcurrente extends Thread{
     private int numeroClientes;
     private final CyclicBarrier barreraMenu;
     private CyclicBarrier barrierServidor;
+    private final ArrayList<Long> tiemposReto;
+    private final ArrayList<Long> tiemposDiffieHellman;
+    private final ArrayList<Long> tiemposVerificacion;
+    private final ArrayList<Long> tiemposCifrado;
 
-    public ServidorConcurrente(int PUERTO, ArrayList<Integer> idClientes, HashMap<Integer, Estados> paquetes, int numeroClientes, CyclicBarrier barreraMenu){
+    public ServidorConcurrente(int PUERTO, ArrayList<Integer> idClientes, HashMap<Integer, Estados> paquetes, int numeroClientes, CyclicBarrier barreraMenu, ArrayList<Long> tiemposReto, ArrayList<Long> tiemposDiffieHellman, ArrayList<Long> tiemposVerificacion, ArrayList<Long> tiemposCifrado){
         this.PUERTO = PUERTO;
         this.idClientes = idClientes;
         this.paquetes = paquetes;
         this.numeroClientes = numeroClientes;
         this.barreraMenu = barreraMenu;
+        this.tiemposReto = tiemposReto;
+        this.tiemposDiffieHellman = tiemposDiffieHellman;
+        this.tiemposVerificacion = tiemposVerificacion;
+        this.tiemposCifrado = tiemposCifrado;
     }
 
 
@@ -37,7 +45,7 @@ public class ServidorConcurrente extends Thread{
                 Socket socket = ss.accept();
                 //TODO no debería incluir el id del servidor delegado?
                 //TODO hacer que el cliente le pase al id el numero de proceso
-                ServidorDelegado servidor = new ServidorDelegado(idClientes, paquetes, socket, barrierServidor);
+                ServidorDelegado servidor = new ServidorDelegado(idClientes, paquetes, socket, barrierServidor, tiemposReto, tiemposDiffieHellman, tiemposVerificacion, tiemposCifrado);
                 servidor.start();
             }
 
@@ -53,26 +61,26 @@ public class ServidorConcurrente extends Thread{
                 }
         }
 
-        // //Barrera para esperar a los delegados
-        // try {
-        //     barrierServidor.await();
-        // } catch (InterruptedException e) {
+        //Barrera para esperar a los delegados
+        try {
+            barrierServidor.await();
+        } catch (InterruptedException e) {
             
-        //     e.printStackTrace();
-        // } catch (BrokenBarrierException e) {
+            e.printStackTrace();
+        } catch (BrokenBarrierException e) {
             
-        //     e.printStackTrace();
-        // }
+            e.printStackTrace();
+        }
 
-        // //Barrera para que no se muestre el menú de opciones hasta que todos terminen
-        // try {
-        //     barreraMenu.await();
-        // } catch (InterruptedException e) {
+        //Barrera para que no se muestre el menú de opciones hasta que todos terminen
+        try {
+            barreraMenu.await();
+        } catch (InterruptedException e) {
             
-        //     e.printStackTrace();
-        // } catch (BrokenBarrierException e) {
+            e.printStackTrace();
+        } catch (BrokenBarrierException e) {
             
-        //     e.printStackTrace();
-        // }
+            e.printStackTrace();
+        }
     }
 }
